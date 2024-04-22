@@ -77,7 +77,17 @@ class ReflexAgent(Agent):
         new_scared_times = [ghost_state.scared_timer for ghost_state in new_ghost_states]
 
         "*** YOUR CODE HERE ***"
-        return successor_game_state.get_score()
+        food_locations = new_food.as_list()
+        pac_pos = successor_game_state.get_pacman_position()
+        food_distance = [float("inf")]
+        for pos in food_locations:
+            food_distance.append(manhattan_distance(pac_pos, pos))
+        # avoid ghost when it is nearby
+        for ghost in successor_game_state.get_ghost_positions():
+            if (manhattan_distance(new_pos, ghost) < 2):
+                return -float("inf")
+          
+        return successor_game_state.get_score() + (1/(min(food_distance)))
 
 def score_evaluation_function(current_game_state):
     """
@@ -132,7 +142,67 @@ class MinimaxAgent(MultiAgentSearchAgent):
             Returns the total number of agents in the game
         """
         "*** YOUR CODE HERE ***"
-        util.raise_not_defined()
+        return self.min_max(game_state, 0, 0)[1]
+
+    def min_max(self, game_state, agent_index, depth):
+        # Terminal state (no action needed)
+        if len(game_state.get_legal_actions(agent_index)) == 0 or depth == self.depth:
+            return self.evaluation_function(game_state), ""
+        
+        # For pacman
+        if agent_index == 0:
+            return self.get_max(game_state, 0, depth)
+        # For ghost
+        elif agent_index > 0:
+            return self.get_min(game_state, agent_index, depth)
+    
+    # helper function to find the max for pacman
+    def get_max(self, game_state, agent_index, depth):
+        max_val = -float("inf")
+        max_act = ""
+        legal_moves = game_state.get_legal_actions(agent_index)
+
+        for move in legal_moves:
+          successor_game_state = game_state.generate_successor(agent_index, move)
+          successor_depth = depth
+          successor_index = 1 + agent_index
+
+          if successor_index == game_state.get_num_agents():
+            successor_index = 0
+            successor_depth += 1
+
+          current_val = self.min_max(successor_game_state, successor_index, successor_depth)[0]
+
+          if max_val < current_val:
+            max_val = current_val
+            max_act = move
+
+        return max_val, max_act
+
+    # helper function to find the min for ghost
+    def get_min(self, game_state, agent_index, depth):
+        min_val = float("inf")
+        min_act = ""
+        legal_moves = game_state.get_legal_actions(agent_index)
+
+        for move in legal_moves:
+          successor_game_state = game_state.generate_successor(agent_index, move)
+          successor_index = 1 + agent_index
+          successor_depth = depth
+
+          # when successor is pacman
+          if successor_index == game_state.get_num_agents():
+            successor_index = 0
+            successor_depth += 1
+
+          current_val = self.min_max(successor_game_state, successor_index, successor_depth)[0]
+
+          if min_val > current_val:
+            min_val = current_val
+            min_act = move
+
+        return min_val, min_act
+  
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
@@ -144,7 +214,79 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           Returns the minimax action using self.depth and self.evaluation_function
         """
         "*** YOUR CODE HERE ***"
-        util.raise_not_defined()
+        return self.min_max(game_state, 0, 0, -float("inf"), float("inf"))[1]
+
+
+    def min_max(self, game_state, agent_index, depth, alpha, beta):
+        # Terminal state (no action needed)
+        if len(game_state.get_legal_actions(agent_index)) == 0 or depth == self.depth:
+            return self.evaluation_function(game_state), ""
+        
+        # For pacman
+        if agent_index == 0:
+            return self.get_max(game_state, 0, depth, alpha, beta)
+        # For ghost
+        elif agent_index > 0:
+            return self.get_min(game_state, agent_index, depth, alpha, beta)
+    
+    # helper function to find the max for pacman
+    def get_max(self, game_state, agent_index, depth, alpha, beta):
+        max_val = -float("inf")
+        max_act = ""
+        legal_moves = game_state.get_legal_actions(agent_index)
+
+        for move in legal_moves:
+          successor_game_state = game_state.generate_successor(agent_index, move)
+          successor_depth = depth
+          successor_index = 1 + agent_index
+
+          if successor_index == game_state.get_num_agents():
+            successor_index = 0
+            successor_depth += 1
+
+          current_val = self.min_max(successor_game_state, successor_index, successor_depth, alpha, beta)[0]
+
+          if max_val < current_val:
+            max_val = current_val
+            max_act = move
+          # update alpha
+          if max_val > alpha:
+            alpha = max_val
+          # pruning: upper level get min will never pick a value greater than passed down beta
+          if max_val > beta:
+             return max_val, max_act
+        
+          alpha = max(alpha, max_val)
+
+        return max_val, max_act
+
+    # helper function to find the min for ghost
+    def get_min(self, game_state, agent_index, depth, alpha, beta):
+        min_val = float("inf")
+        min_act = ""
+        legal_moves = game_state.get_legal_actions(agent_index)
+
+        for move in legal_moves:
+          successor_game_state = game_state.generate_successor(agent_index, move)
+          successor_index = 1 + agent_index
+          successor_depth = depth
+
+          # when successor is pacman
+          if successor_index == game_state.get_num_agents():
+            successor_index = 0
+            successor_depth += 1
+
+          current_val = self.min_max(successor_game_state, successor_index, successor_depth, alpha, beta)[0]
+
+          if min_val > current_val:
+            min_val = current_val
+            min_act = move
+          # pruning: upper level get max will never pick a value less than passed down alpha
+          if min_val < alpha: 
+             return min_val, min_act
+          beta = min(beta, min_val)
+
+        return min_val, min_act
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
@@ -159,7 +301,63 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
           legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raise_not_defined()
+        return self.expected_and_max(game_state, 0, 0)[1]
+
+    def expected_and_max(self, game_state, agent_index, depth):
+        # Terminal state (no action needed)
+        if len(game_state.get_legal_actions(agent_index)) == 0 or depth == self.depth:
+            return self.evaluation_function(game_state), ""
+        
+        # For pacman
+        if agent_index == 0:
+            return self.get_max(game_state, 0, depth)
+        # For ghost
+        elif agent_index > 0:
+            return self.get_expected(game_state, agent_index, depth)
+    
+    def get_max(self, game_state, agent_index, depth):
+        max_val = -float("inf")
+        max_act = ""
+        legal_moves = game_state.get_legal_actions(agent_index)
+
+        for move in legal_moves:
+          successor_game_state = game_state.generate_successor(agent_index, move)
+          successor_depth = depth
+          successor_index = 1 + agent_index
+
+          if successor_index == game_state.get_num_agents():
+            successor_index = 0
+            successor_depth += 1
+
+          current_val = self.expected_and_max(successor_game_state, successor_index, successor_depth)[0]
+
+          if max_val < current_val:
+            max_val = current_val
+            max_act = move
+
+        return max_val, max_act
+
+    def get_expected(self, game_state, agent_index, depth):
+        expected_val = 0
+        expected_act = ""
+        legal_moves = game_state.get_legal_actions(agent_index)
+
+        for move in legal_moves:
+          successor_game_state = game_state.generate_successor(agent_index, move)
+          successor_index = 1 + agent_index
+          successor_depth = depth
+
+          # when successor is pacman
+          if successor_index == game_state.get_num_agents():
+            successor_index = 0
+            successor_depth += 1
+
+          # the probablity of this move being chosen
+          probability = 1.0 / len(legal_moves)
+          current_val = self.expected_and_max(successor_game_state, successor_index, successor_depth)[0]
+          expected_val += probability * current_val
+
+        return expected_val, expected_act
 
 def better_evaluation_function(current_game_state):
     """
@@ -167,9 +365,45 @@ def better_evaluation_function(current_game_state):
       evaluation function (question 5).
 
       DESCRIPTION: <write something here so we know what you did>
+      evaluting the score based on food distance, ghost distance, and if the ghost is scared, we want smaller food distance,
+      larger ghost distance, and if the ghost is scared, we want to eat it
+      The evaluation function should evaluate states, rather than actions like your reflex agent evaluation function did.
     """
     "*** YOUR CODE HERE ***"
-    util.raise_not_defined()
+
+    score = current_game_state.get_score()
+    food_locations = current_game_state.get_food().as_list()
+    food_distance = [float("inf")]
+    pac_pos = current_game_state.get_pacman_position()
+    ghost_states = current_game_state.get_ghost_states()
+
+    # prioritizing eating scared ghost
+    scard_ghost_score = 70
+    ghost_score = 10
+    food_score = 10
+
+    for ghost in ghost_states:
+        distance_from_pacman = manhattan_distance(pac_pos, ghost.configuration.pos)
+        # if ghost is scare and is not far we want to eat it
+        if ghost.scared_timer > 0:
+            score += scard_ghost_score / (distance_from_pacman + 1)
+        # if ghost is not scared and is not far we want to avoid it
+        else:
+            score -= ghost_score / (distance_from_pacman + 1)
+
+    for food in food_locations:
+        food_distance.append(manhattan_distance(pac_pos, food))
+      
+    # if the food is close we want to eat it
+    if len(food_distance) > 0:
+        score += food_score / (min(food_distance) + 1)
+
+    return score
+
+    
+
+
+
 
 # Abbreviation
 better = better_evaluation_function

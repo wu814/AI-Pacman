@@ -1,1 +1,11 @@
-../../../.git/config
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+	url = https://github.com/jeff-hykin/berkeley_pacman.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "beta"]
+	remote = origin
+	merge = refs/heads/beta
